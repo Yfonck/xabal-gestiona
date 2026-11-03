@@ -309,6 +309,16 @@ class _CampoCatalogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // `DropdownButton` exige un único ítem por `value`: se eliminan opciones
+    // repetidas (mismo `valor`) y se ignora un valor seleccionado que ya no
+    // exista en la lista.
+    final unicas = <OpcionFiltro>[];
+    final valoresVistos = <String>{};
+    for (final opcion in opciones) {
+      if (valoresVistos.add(opcion.valor)) unicas.add(opcion);
+    }
+    final seleccionValida = unicas.contains(valor) ? valor : null;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -347,7 +357,7 @@ class _CampoCatalogo extends StatelessWidget {
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<OpcionFiltro>(
                     isExpanded: true,
-                    value: valor,
+                    value: seleccionValida,
                     hint: const Text(
                       '-Seleccione-',
                       style: TextStyle(color: AppPalette.textSecondary),
@@ -358,7 +368,7 @@ class _CampoCatalogo extends StatelessWidget {
                       fontSize: 14,
                       color: AppPalette.textPrimary,
                     ),
-                    items: opciones
+                    items: unicas
                         .map(
                           (opcion) => DropdownMenuItem<OpcionFiltro>(
                             value: opcion,

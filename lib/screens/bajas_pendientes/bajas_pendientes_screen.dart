@@ -198,12 +198,8 @@ class _FiltrosSuperiores extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final areasValidas = areas
-        .where((area) => area.id != null)
-        .toList(growable: false);
-    final tiposValidos = tipos
-        .where((tipo) => tipo.id != null)
-        .toList(growable: false);
+    final areasValidas = OpcionFiltro.conIdNumericoUnico(areas);
+    final tiposValidos = OpcionFiltro.conIdNumericoUnico(tipos);
 
     const estiloItem = TextStyle(
       fontSize: 13,
@@ -289,7 +285,14 @@ class _DropdownFiltro extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final existe = items.any((item) => item.value == valor);
+    // Un `DropdownButton` exige un único ítem por `value`; se descartan
+    // duplicados para no disparar el assert de Flutter.
+    final valoresVistos = <int?>{};
+    final itemsUnicos = [
+      for (final item in items)
+        if (valoresVistos.add(item.value)) item,
+    ];
+    final existe = itemsUnicos.any((item) => item.value == valor);
 
     return Container(
       height: 44,
@@ -317,7 +320,7 @@ class _DropdownFiltro extends StatelessWidget {
             color: AppPalette.textSecondary,
             size: 20,
           ),
-          items: items,
+          items: itemsUnicos,
           onChanged: onChanged,
         ),
       ),
@@ -947,9 +950,7 @@ class _FiltrosSheetState extends State<_FiltrosSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final causasValidas = widget.causas
-        .where((causa) => causa.id != null)
-        .toList(growable: false);
+    final causasValidas = OpcionFiltro.conIdNumericoUnico(widget.causas);
 
     return Padding(
       padding: EdgeInsets.fromLTRB(

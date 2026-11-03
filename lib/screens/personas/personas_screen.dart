@@ -75,6 +75,13 @@ class _PersonasScreenState extends State<PersonasScreen> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setStateSheet) {
+            final estructuras =
+                OpcionFiltro.conIdNumericoUnico(_personas.filtros.estructuras);
+            final estructuraValida =
+                estructuras.any((opcion) => opcion.id == estructura)
+                    ? estructura
+                    : null;
+
             return Padding(
               padding: EdgeInsets.only(
                 left: 20,
@@ -134,7 +141,7 @@ class _PersonasScreenState extends State<PersonasScreen> {
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<int?>(
                         isExpanded: true,
-                        value: estructura,
+                        value: estructuraValida,
                         hint: const Text('Todas las estructuras'),
                         icon: const Icon(Icons.keyboard_arrow_down,
                             color: AppPalette.textSecondary),
@@ -147,7 +154,7 @@ class _PersonasScreenState extends State<PersonasScreen> {
                             value: null,
                             child: Text('Todas las estructuras'),
                           ),
-                          ..._personas.filtros.estructuras.map(
+                          ...estructuras.map(
                             (OpcionFiltro opcion) =>
                                 DropdownMenuItem<int?>(
                               value: opcion.id,

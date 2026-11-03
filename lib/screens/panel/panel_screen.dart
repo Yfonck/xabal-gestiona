@@ -239,7 +239,9 @@ class _SelectorArea extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final valores = <int?>[null, ...areas.map((a) => a.id)];
+    final opciones = OpcionFiltro.conIdNumericoUnico(areas);
+    final valorValido =
+        opciones.any((opcion) => opcion.id == seleccionada) ? seleccionada : null;
 
     return Container(
       height: 46,
@@ -252,7 +254,7 @@ class _SelectorArea extends StatelessWidget {
       child: DropdownButtonHideUnderline(
         child: DropdownButton<int?>(
           isExpanded: true,
-          value: valores.contains(seleccionada) ? seleccionada : null,
+          value: valorValido,
           icon: const Icon(Icons.keyboard_arrow_down,
               color: AppPalette.textSecondary),
           style: const TextStyle(
@@ -265,7 +267,7 @@ class _SelectorArea extends StatelessWidget {
               value: null,
               child: Text('Todas las áreas'),
             ),
-            ...areas.map(
+            ...opciones.map(
               (area) => DropdownMenuItem<int?>(
                 value: area.id,
                 child: Text(area.etiqueta, overflow: TextOverflow.ellipsis),
