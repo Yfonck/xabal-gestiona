@@ -28,9 +28,12 @@ abstract final class ApiConfig {
   }
 
   /// Tiempo máximo de espera para conectar y para cada respuesta.
-  static const Duration connectTimeout = Duration(seconds: 15);
-  static const Duration receiveTimeout = Duration(seconds: 20);
-  static const Duration sendTimeout = Duration(seconds: 20);
+  ///
+  /// 60 s para tolerar el arranque en frío del backend en Render, que puede
+  /// tardar decenas de segundos en despertar tras estar inactivo.
+  static const Duration connectTimeout = Duration(seconds: 60);
+  static const Duration receiveTimeout = Duration(seconds: 60);
+  static const Duration sendTimeout = Duration(seconds: 60);
 
   // ---- Endpoints ----
   // Autenticación
