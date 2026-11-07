@@ -25,7 +25,7 @@ class ApiClient {
             connectTimeout: ApiConfig.connectTimeout,
             receiveTimeout: ApiConfig.receiveTimeout,
             sendTimeout: ApiConfig.sendTimeout,
-            headers: const {'Accept': 'application/json'},
+            headers: ApiConfig.headersPorDefecto,
           ),
         );
     _dio.interceptors.add(
@@ -140,6 +140,10 @@ class ApiClient {
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
+    // Refuerzo por petición: garantiza la cabecera incluso si el `Dio`
+    // inyectado no trae `ApiConfig.headersPorDefecto` (tests, usos futuros).
+    options.headers['ngrok-skip-browser-warning'] ??= 'true';
+
     if (options.extra[_claveSinAuth] != true) {
       final token = await _tokenStorage.obtenerAccess();
       if (token != null && token.isNotEmpty) {
@@ -203,7 +207,7 @@ class ApiClient {
         baseUrl: ApiConfig.baseUrl,
         connectTimeout: ApiConfig.connectTimeout,
         receiveTimeout: ApiConfig.receiveTimeout,
-        headers: const {'Accept': 'application/json'},
+        headers: ApiConfig.headersPorDefecto,
       ),
     );
 

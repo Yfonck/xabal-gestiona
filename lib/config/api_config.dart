@@ -35,6 +35,16 @@ abstract final class ApiConfig {
   static const Duration receiveTimeout = Duration(seconds: 60);
   static const Duration sendTimeout = Duration(seconds: 60);
 
+  /// Cabeceras que viajan en todas las peticiones.
+  ///
+  /// `ngrok-skip-browser-warning` evita que los túneles gratuitos de ngrok
+  /// devuelvan su página de advertencia HTML (`ERR_NGROK_6024`) en lugar del
+  /// JSON del backend. Es inofensiva para cualquier otro servidor.
+  static const Map<String, String> headersPorDefecto = {
+    'Accept': 'application/json',
+    'ngrok-skip-browser-warning': 'true',
+  };
+
   // ---- Endpoints ----
   // Autenticación
   static const String login = 'auth/login/';
