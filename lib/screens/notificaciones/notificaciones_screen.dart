@@ -80,6 +80,11 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
       backgroundColor: AppPalette.surface,
       appBar: AppBar(
         title: const Text('Notificaciones'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'Regresar',
+          onPressed: () => Navigator.pop(context),
+        ),
         actions: [
           if (provider.notificaciones.isNotEmpty)
             IconButton(

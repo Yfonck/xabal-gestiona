@@ -60,6 +60,13 @@ Estados de solicitud: usar el enum EstadoSolicitud (1=Iniciada, 2=En Trámite, 3
 
 Paginación: todos los listados usan PaginatedResponse<T> y scroll infinito.
 
+## Configuración Dinámica de URL (Desarrollo)
+
+- La URL del backend (`baseUrl`) NO debe estar hardcodeada en el código.
+- Debe existir un `ConfigService` (o similar) que lea la URL desde `SharedPreferences`.
+- Si no hay URL guardada, se usa la por defecto: `http://10.0.2.2:8000/api/`.
+- El `ApiClient` (Dio) debe obtener la URL desde este servicio antes de configurar su `BaseOptions`.
+
 ##Flujo de trabajo
 
 Planificar primero: usa el agente Plan para analizar y proponer cambios antes de editar.

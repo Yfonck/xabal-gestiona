@@ -95,12 +95,6 @@ class AppDrawer extends StatelessWidget {
               ruta: AppRoutes.personas,
               rutaActual: rutaActual,
             ),
-            _ElementoMenu(
-              icono: Icons.notifications_none,
-              etiqueta: 'Notificaciones',
-              ruta: AppRoutes.notificaciones,
-              rutaActual: rutaActual,
-            ),
             const Spacer(),
             const Divider(height: 1),
             ListTile(

@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../config/routes.dart';
 import '../../config/theme.dart';
 import '../../models/area_confirmacion.dart';
+import '../../models/estado_solicitud.dart';
 import '../../models/solicitud_baja.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/detalle_solicitud_provider.dart';
@@ -60,6 +61,30 @@ class _DetalleSolicitudScreenState extends State<DetalleSolicitudScreen> {
     );
   }
 
+  Future<void> _confirmar() async {
+    await context.read<DetalleSolicitudProvider>().confirmar(widget.idSolicitud);
+  }
+
+  Future<void> _cancelar() async {
+    await context.read<DetalleSolicitudProvider>().cancelar(widget.idSolicitud);
+  }
+
+  Future<void> _cerrar() async {
+    await context.read<DetalleSolicitudProvider>().cerrar(widget.idSolicitud);
+  }
+
+  Future<void> _cerrarLegacy() async {
+    await context.read<DetalleSolicitudProvider>().cerrarLegacy(widget.idSolicitud);
+  }
+
+  Future<void> _cerrarAsync() async {
+    await context.read<DetalleSolicitudProvider>().cerrarAsync(widget.idSolicitud);
+  }
+
+  Future<void> _darBajaDefinitiva() async {
+    await context.read<DetalleSolicitudProvider>().darBajaDefinitiva(widget.idSolicitud);
+  }
+
   void _avisar(String mensaje) {
     if (!mounted) return;
     ScaffoldMessenger.of(context)
@@ -96,8 +121,15 @@ class _DetalleSolicitudScreenState extends State<DetalleSolicitudScreen> {
             Expanded(
               child: _Contenido(
                 provider: provider,
+                auth: auth,
                 onEditar: _editar,
                 onEliminar: _eliminar,
+                onConfirmar: _confirmar,
+                onCancelar: _cancelar,
+                onCerrar: _cerrar,
+                onCerrarLegacy: _cerrarLegacy,
+                onCerrarAsync: _cerrarAsync,
+                onDarBajaDefinitiva: _darBajaDefinitiva,
               ),
             ),
           ],
@@ -114,13 +146,27 @@ class _DetalleSolicitudScreenState extends State<DetalleSolicitudScreen> {
 class _Contenido extends StatelessWidget {
   const _Contenido({
     required this.provider,
+    required this.auth,
     required this.onEditar,
     required this.onEliminar,
+    required this.onConfirmar,
+    required this.onCancelar,
+    required this.onCerrar,
+    required this.onCerrarLegacy,
+    required this.onCerrarAsync,
+    required this.onDarBajaDefinitiva,
   });
 
   final DetalleSolicitudProvider provider;
+  final AuthProvider auth;
   final VoidCallback onEditar;
   final VoidCallback onEliminar;
+  final Future<void> Function() onConfirmar;
+  final Future<void> Function() onCancelar;
+  final Future<void> Function() onCerrar;
+  final Future<void> Function() onCerrarLegacy;
+  final Future<void> Function() onCerrarAsync;
+  final Future<void> Function() onDarBajaDefinitiva;
 
   @override
   Widget build(BuildContext context) {
@@ -216,7 +262,18 @@ class _Contenido extends StatelessWidget {
             const SizedBox(height: 16),
             _TarjetaAreas(areas: provider.areas),
             const SizedBox(height: 24),
-            _Acciones(onEditar: onEditar, onEliminar: onEliminar),
+            _Acciones(
+              provider: provider,
+              auth: auth,
+              onEditar: onEditar,
+              onEliminar: onEliminar,
+              onConfirmar: onConfirmar,
+              onCancelar: onCancelar,
+              onCerrar: onCerrar,
+              onCerrarLegacy: onCerrarLegacy,
+              onCerrarAsync: onCerrarAsync,
+              onDarBajaDefinitiva: onDarBajaDefinitiva,
+            ),
           ],
         ),
       ),
@@ -484,10 +541,40 @@ class _FilaDetalle extends StatelessWidget {
 // Tarjeta de áreas de bajas
 // ---------------------------------------------------------------------------
 
-class _TarjetaAreas extends StatelessWidget {
+class _TarjetaAreas extends StatefulWidget {
   const _TarjetaAreas({required this.areas});
 
   final List<AreaConfirmacion> areas;
+
+  @override
+  State<_TarjetaAreas> createState() => _TarjetaAreasState();
+}
+
+class _TarjetaAreasState extends State<_TarjetaAreas> {
+  final TextEditingController _filtroController = TextEditingController();
+  String _filtro = '';
+  AreaConfirmacion? _areaSeleccionada;
+
+  List<AreaConfirmacion> get _areasFiltradas {
+    if (_filtro.isEmpty) return widget.areas;
+    return widget.areas
+        .where((a) =>
+            a.nombreArea.toLowerCase().contains(_filtro.toLowerCase()))
+        .toList();
+  }
+
+  void _seleccionarArea(AreaConfirmacion area) {
+    setState(() {
+      _areaSeleccionada =
+          _areaSeleccionada?.idArea == area.idArea ? null : area;
+    });
+  }
+
+  @override
+  void dispose() {
+    _filtroController.dispose();
+    super.dispose();
+  }
 
   static const TextStyle _estiloCabecera = TextStyle(
     fontSize: 13,
@@ -497,6 +584,8 @@ class _TarjetaAreas extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final areas = _areasFiltradas;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -507,21 +596,34 @@ class _TarjetaAreas extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Row(
-            children: [
-              Expanded(
-                flex: 6,
-                child: Text('Áreas de Bajas', style: _estiloCabecera),
+          TextField(
+            controller: _filtroController,
+            decoration: InputDecoration(
+              hintText: 'Buscar área...',
+              prefixIcon: const Icon(Icons.search, size: 20),
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(vertical: 8),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: AppPalette.outline),
               ),
+            ),
+            onChanged: (valor) => setState(() => _filtro = valor),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(flex: 4, child: Text('Área', style: _estiloCabecera)),
               Expanded(flex: 3, child: Text('Estado', style: _estiloCabecera)),
               Expanded(
-                flex: 3,
+                flex: 2,
                 child: Text(
                   'Fecha',
                   textAlign: TextAlign.end,
                   style: _estiloCabecera,
                 ),
               ),
+              Expanded(flex: 2, child: SizedBox.shrink()),
             ],
           ),
           const SizedBox(height: 8),
@@ -534,7 +636,16 @@ class _TarjetaAreas extends StatelessWidget {
               ),
             )
           else
-            for (final area in areas) _FilaArea(area: area),
+            for (final area in areas)
+              _FilaArea(
+                area: area,
+                seleccionada: _areaSeleccionada?.idArea == area.idArea,
+                onSeleccionar: () => _seleccionarArea(area),
+              ),
+          if (_areaSeleccionada != null) ...[
+            const SizedBox(height: 16),
+            _PanelAreaSeleccionada(area: _areaSeleccionada!),
+          ],
         ],
       ),
     );
@@ -542,9 +653,15 @@ class _TarjetaAreas extends StatelessWidget {
 }
 
 class _FilaArea extends StatelessWidget {
-  const _FilaArea({required this.area});
+  const _FilaArea({
+    required this.area,
+    required this.seleccionada,
+    required this.onSeleccionar,
+  });
 
   final AreaConfirmacion area;
+  final bool seleccionada;
+  final VoidCallback onSeleccionar;
 
   @override
   Widget build(BuildContext context) {
@@ -554,14 +671,16 @@ class _FilaArea extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            flex: 6,
+            flex: 4,
             child: Padding(
               padding: const EdgeInsets.only(right: 8),
               child: Text(
                 area.nombreArea,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12.5,
                   color: AppPalette.textPrimary,
+                  fontWeight:
+                      seleccionada ? FontWeight.bold : FontWeight.normal,
                 ),
               ),
             ),
@@ -578,13 +697,32 @@ class _FilaArea extends StatelessWidget {
             ),
           ),
           Expanded(
-            flex: 3,
+            flex: 2,
             child: Text(
               _formatearFecha(area.fecha),
               textAlign: TextAlign.end,
               style: const TextStyle(
                 fontSize: 12.5,
                 color: AppPalette.textSecondary,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: ElevatedButton(
+              onPressed: onSeleccionar,
+              style: ElevatedButton.styleFrom(
+                backgroundColor:
+                    seleccionada ? AppPalette.primary : AppPalette.tertiary,
+                foregroundColor: Colors.white,
+                minimumSize: Size.zero,
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(
+                seleccionada ? 'Seleccionada' : 'Seleccionar',
+                style: const TextStyle(fontSize: 11),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ),
@@ -599,42 +737,375 @@ class _FilaArea extends StatelessWidget {
   }
 }
 
+class _PanelAreaSeleccionada extends StatelessWidget {
+  const _PanelAreaSeleccionada({required this.area});
+
+  final AreaConfirmacion area;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppPalette.primarySoft.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppPalette.primary.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Área seleccionada',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppPalette.primary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _filaInfo('Área', area.nombreArea),
+          _filaInfo('Estado', area.estado),
+          _filaInfo('Fecha', _formatearFecha(area.fecha)),
+          if (area.idArea != null) _filaInfo('ID', area.idArea!.toString()),
+        ],
+      ),
+    );
+  }
+
+  static String _formatearFecha(DateTime? fecha) {
+    if (fecha == null) return '--/--/----';
+    return DateFormat('dd/MM/yyyy').format(fecha);
+  }
+
+  Widget _filaInfo(String etiqueta, String valor) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 70,
+            child: Text(
+              '$etiqueta:',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppPalette.textSecondary,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              valor,
+              style: const TextStyle(fontSize: 12, color: AppPalette.textPrimary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Acciones y estados de error
 // ---------------------------------------------------------------------------
 
 class _Acciones extends StatelessWidget {
-  const _Acciones({required this.onEditar, required this.onEliminar});
+  const _Acciones({
+    required this.provider,
+    required this.auth,
+    required this.onEditar,
+    required this.onEliminar,
+    required this.onConfirmar,
+    required this.onCancelar,
+    required this.onCerrar,
+    required this.onCerrarLegacy,
+    required this.onCerrarAsync,
+    required this.onDarBajaDefinitiva,
+  });
 
+  final DetalleSolicitudProvider provider;
+  final AuthProvider auth;
   final VoidCallback onEditar;
   final VoidCallback onEliminar;
+  final Future<void> Function() onConfirmar;
+  final Future<void> Function() onCancelar;
+  final Future<void> Function() onCerrar;
+  final Future<void> Function() onCerrarLegacy;
+  final Future<void> Function() onCerrarAsync;
+  final Future<void> Function() onDarBajaDefinitiva;
+
+  bool get _esAdminOrRrhh => auth.usuario?.esAdmin == true ||
+      auth.usuario?.permisoRrhh == true;
+
+  List<Widget> _botonesTransicion(BuildContext context) {
+    final estado = provider.solicitud?.estado;
+    if (estado == null) return const [];
+
+    final botones = <Widget>[];
+
+    switch (estado) {
+      case EstadoSolicitud.iniciada:
+        // Cerrar legacy desde Iniciada (1→4), solo admin/RRHH
+        if (_esAdminOrRrhh) {
+          botones.add(
+            _BotonTransicion(
+              texto: 'Cerrar (legacy)',
+              icono: Icons.close_fullscreen,
+              color: AppPalette.error,
+              onPressed: () => _ejecutarAccion(context, onCerrarLegacy),
+            ),
+          );
+        }
+        break;
+
+      case EstadoSolicitud.enTramite:
+        // Confirmar área (2→3)
+        botones.add(
+          _BotonTransicion(
+            texto: 'Confirmar área',
+            icono: Icons.check_circle_outline,
+            color: AppPalette.success,
+            onPressed: () => _ejecutarAccion(context, onConfirmar),
+          ),
+        );
+        // Cancelar (2→5)
+        botones.add(
+          _BotonTransicion(
+            texto: 'Cancelar',
+            icono: Icons.cancel_outlined,
+            color: AppPalette.error,
+            onPressed: () => _confirmarCancelar(context),
+          ),
+        );
+        break;
+
+      case EstadoSolicitud.finalizada:
+        // Cerrar baja definitiva (3→4), solo admin/RRHH
+        if (_esAdminOrRrhh) {
+          botones.add(
+            _BotonTransicion(
+              texto: 'Dar baja definitiva',
+              icono: Icons.person_off_outlined,
+              color: AppPalette.primary,
+              onPressed: () => _confirmarBajaDefinitiva(context),
+            ),
+          );
+          // Cerrar (3→4)
+          botones.add(
+            _BotonTransicion(
+              texto: 'Cerrar',
+              icono: Icons.close_fullscreen,
+              color: AppPalette.error,
+              onPressed: () => _ejecutarAccion(context, onCerrar),
+            ),
+          );
+          // Cerrar legacy (3→4)
+          botones.add(
+            _BotonTransicion(
+              texto: 'Cerrar (legacy)',
+              icono: Icons.close_fullscreen,
+              color: AppPalette.error,
+              onPressed: () => _ejecutarAccion(context, onCerrarLegacy),
+            ),
+          );
+          // Cerrar async (3→4)
+          botones.add(
+            _BotonTransicion(
+              texto: 'Cerrar (async)',
+              icono: Icons.schedule_outlined,
+              color: AppPalette.tertiary,
+              onPressed: () => _ejecutarAccion(context, onCerrarAsync),
+            ),
+          );
+        }
+        break;
+
+      case EstadoSolicitud.baja:
+      case EstadoSolicitud.cancelada:
+      case EstadoSolicitud.expirada:
+        // Estados finales: sin acciones de transición
+        break;
+    }
+
+    return botones;
+  }
+
+  Future<void> _ejecutarAccion(BuildContext context, Future<void> Function() accion) async {
+    try {
+      await accion();
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Operación realizada con éxito.'),
+          backgroundColor: AppPalette.success,
+        ),
+      );
+    } catch (_) {
+      // El provider ya maneja el errorMessage; no hacer nada adicional aquí.
+    }
+  }
+
+  Future<void> _confirmarCancelar(BuildContext context) async {
+    final motivoCtrl = TextEditingController();
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cancelar solicitud'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('¿Está seguro de que desea cancelar esta solicitud?'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: motivoCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Motivo de cancelación',
+                hintText: 'Ingrese el motivo',
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppPalette.warning,
+                    foregroundColor: const Color(0xFF3D2A00),
+                  ),
+                  child: const Text('Cancelar'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppPalette.error,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Confirmar'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+    if (confirmar != true || !context.mounted) return;
+
+    // Nota: el backend requiere motivo, pero el service actual de cancelar
+    // no recibe motivo. Se envía vacío; el backend validará si es necesario.
+    await onCancelar();
+  }
+
+  Future<void> _confirmarBajaDefinitiva(BuildContext context) async {
+    final confirmar = await mostrarConfirmacion(
+      context,
+      titulo: 'Dar baja definitiva',
+      mensaje:
+          '¿Está seguro de que desea dar de baja definitiva esta solicitud? '
+          'Esta acción es irreversible y cambiará el estado a "Baja" (ID=4).',
+      textoCancelar: 'Cancelar',
+      textoConfirmar: 'Dar de baja',
+    );
+    if (confirmar != true || !context.mounted) return;
+    await onDarBajaDefinitiva();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    final estado = provider.solicitud?.estado;
+    final hayTransiciones = estado != null &&
+        (estado == EstadoSolicitud.iniciada ||
+            estado == EstadoSolicitud.enTramite ||
+            estado == EstadoSolicitud.finalizada);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed: onEditar,
-            icon: const Icon(Icons.edit_outlined),
-            label: const Text('Editar'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppPalette.tertiary,
+        // Botones de transición de estado (HU07 / HU08)
+        if (hayTransiciones) ...[
+          const Text(
+            'Acciones de estado',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: AppPalette.textPrimary,
             ),
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed: onEliminar,
-            icon: const Icon(Icons.delete_outline),
-            label: const Text('Eliminar'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppPalette.primary,
-            ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _botonesTransicion(context),
           ),
+          const SizedBox(height: 20),
+        ],
+        // Botones de editar y eliminar (HU09 pendiente)
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: onEditar,
+                icon: const Icon(Icons.edit_outlined),
+                label: const Text('Editar'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppPalette.tertiary,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: onEliminar,
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('Eliminar'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppPalette.primary,
+                ),
+              ),
+            ),
+          ],
         ),
       ],
+    );
+  }
+}
+
+/// Botón individual de transición de estado.
+class _BotonTransicion extends StatelessWidget {
+  const _BotonTransicion({
+    required this.texto,
+    required this.icono,
+    required this.color,
+    required this.onPressed,
+  });
+
+  final String texto;
+  final IconData icono;
+  final Color color;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icono, size: 18),
+      label: Text(texto, style: const TextStyle(fontSize: 12)),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        foregroundColor: Colors.white,
+        minimumSize: Size.zero,
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
     );
   }
 }

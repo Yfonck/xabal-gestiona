@@ -64,4 +64,100 @@ class DetalleSolicitudProvider extends ChangeNotifier {
     if (id == null) return;
     await cargar(id);
   }
+
+  /// Confirma el área de la solicitud (2 → 3).
+  Future<void> confirmar(int id) async {
+    _cargando = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _servicio.confirmar(id);
+      await cargar(id);
+    } on ApiException catch (error) {
+      _errorMessage = error.mensaje;
+    } catch (_) {
+      _errorMessage = 'No se pudo confirmar el área.';
+    } finally {
+      _cargando = false;
+      notifyListeners();
+    }
+  }
+
+  /// Cancela la solicitud (2 → 5).
+  Future<void> cancelar(int id, {String motivo = ''}) async {
+    _cargando = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _servicio.cancelar(id);
+      await cargar(id);
+    } on ApiException catch (error) {
+      _errorMessage = error.mensaje;
+    } catch (_) {
+      _errorMessage = 'No se pudo cancelar la solicitud.';
+    } finally {
+      _cargando = false;
+      notifyListeners();
+    }
+  }
+
+  /// Cierra la baja (3 → 4, solo admin/RRHH).
+  Future<void> cerrar(int id) async {
+    _cargando = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _servicio.cerrar(id);
+      await cargar(id);
+    } on ApiException catch (error) {
+      _errorMessage = error.mensaje;
+    } catch (_) {
+      _errorMessage = 'No se pudo cerrar la baja.';
+    } finally {
+      _cargando = false;
+      notifyListeners();
+    }
+  }
+
+  /// Cierra la baja legacy (1→4 o 3→4, solo admin/RRHH).
+  Future<void> cerrarLegacy(int id) async {
+    _cargando = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _servicio.cerrarLegacy(id);
+      await cargar(id);
+    } on ApiException catch (error) {
+      _errorMessage = error.mensaje;
+    } catch (_) {
+      _errorMessage = 'No se pudo cerrar la solicitud (legacy).';
+    } finally {
+      _cargando = false;
+      notifyListeners();
+    }
+  }
+
+  /// Cierra la baja de forma asíncrona (3 → 4, solo admin/RRHH).
+  Future<void> cerrarAsync(int id) async {
+    _cargando = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _servicio.cerrarAsync(id);
+      await cargar(id);
+    } on ApiException catch (error) {
+      _errorMessage = error.mensaje;
+    } catch (_) {
+      _errorMessage = 'No se pudo iniciar el cierre asíncrono.';
+    } finally {
+      _cargando = false;
+      notifyListeners();
+    }
+  }
+
+  /// Da de baja definitiva a una solicitud Finalizada (3 → 4).
+  /// Acción irreversible que requiere confirmación previa desde la UI.
+  Future<void> darBajaDefinitiva(int id) async {
+    await cerrar(id);
+  }
 }

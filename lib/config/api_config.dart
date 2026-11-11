@@ -66,6 +66,8 @@ abstract final class ApiConfig {
   static String baja(String id) => 'bajas/$id/';
   static String bajaConfirmar(String id) => 'bajas/$id/confirmar/';
   static String bajaCerrar(String id) => 'bajas/$id/cerrar/';
+  static String bajaCerrarLegacy(String id) => 'bajas/$id/cerrar-legacy/';
+  static String bajaCerrarAsync(String id) => 'bajas/$id/cerrar-async/';
   static String bajaCancelar(String id) => 'bajas/$id/cancelar/';
   static String bajaAreasConfirmacion(String id) =>
       'bajas/$id/areas-confirmacion/';

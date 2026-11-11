@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 
 import '../config/api_config.dart';
 import '../models/api_error.dart';
+import 'config_service.dart';
 import 'token_storage.dart';
 
 /// Cliente HTTP único de la aplicación.
@@ -21,7 +22,7 @@ class ApiClient {
     _dio = dio ??
         Dio(
           BaseOptions(
-            baseUrl: ApiConfig.baseUrl,
+            baseUrl: ConfigService.instance.obtenerUrl(),
             connectTimeout: ApiConfig.connectTimeout,
             receiveTimeout: ApiConfig.receiveTimeout,
             sendTimeout: ApiConfig.sendTimeout,
@@ -40,6 +41,14 @@ class ApiClient {
 
   late final Dio _dio;
   final TokenStorage _tokenStorage;
+
+  /// Inicializa la URL base del cliente desde `ConfigService` (SharedPreferences).
+  /// Debe llamarse antes de realizar peticiones, típicamente al arrancar la app
+  /// o tras cambiar la URL en la pantalla de login.
+  Future<void> inicializar() async {
+    await ConfigService.instance.inicializar();
+    _dio.options.baseUrl = ConfigService.instance.obtenerUrl();
+  }
 
   /// Se invoca cuando el refresh token deja de ser válido.
   VoidCallback? onSesionExpirada;
@@ -204,7 +213,7 @@ class ApiClient {
 
     final dioRefresh = Dio(
       BaseOptions(
-        baseUrl: ApiConfig.baseUrl,
+        baseUrl: ConfigService.instance.obtenerUrl(),
         connectTimeout: ApiConfig.connectTimeout,
         receiveTimeout: ApiConfig.receiveTimeout,
         headers: ApiConfig.headersPorDefecto,

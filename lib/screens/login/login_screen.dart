@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 
 import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/api_client.dart';
+import '../../services/config_service.dart';
 import '../../widgets/decoracion_superior.dart';
 import '../../widgets/marca_xabal.dart';
 
@@ -19,9 +21,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _usuarioCtrl = TextEditingController();
   final _claveCtrl = TextEditingController();
-
-  /// Dominio informativo: el backend no lo recibe.
-  static const String _dominioUci = 'gestiona.uci.cu';
+  final _dominioCtrl = TextEditingController();
 
   bool _ocultarClave = true;
   bool _puedeEnviar = false;
@@ -31,6 +31,8 @@ class _LoginScreenState extends State<LoginScreen> {
     super.initState();
     _usuarioCtrl.addListener(_actualizarBoton);
     _claveCtrl.addListener(_actualizarBoton);
+    _dominioCtrl.addListener(_actualizarBoton);
+    _dominioCtrl.text = ConfigService.instance.obtenerUrl();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final auth = context.read<AuthProvider>();
@@ -49,12 +51,15 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     _usuarioCtrl.dispose();
     _claveCtrl.dispose();
+    _dominioCtrl.dispose();
     super.dispose();
   }
 
   void _actualizarBoton() {
     final habilitado =
-        _usuarioCtrl.text.trim().isNotEmpty && _claveCtrl.text.isNotEmpty;
+        _usuarioCtrl.text.trim().isNotEmpty &&
+        _claveCtrl.text.isNotEmpty &&
+        _dominioCtrl.text.trim().isNotEmpty;
     if (habilitado != _puedeEnviar) {
       setState(() => _puedeEnviar = habilitado);
     }
@@ -64,11 +69,34 @@ class _LoginScreenState extends State<LoginScreen> {
     FocusScope.of(context).unfocus();
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
+    final url = _dominioCtrl.text.trim();
+    if (!Uri.parse(url).isAbsolute || !url.endsWith('/')) {
+      _avisar('La URL del backend no es válida.');
+      return;
+    }
+
+    try {
+      await ConfigService.instance.guardarUrl(url);
+      await ApiClient.instance.inicializar();
+    } catch (_) {
+      if (!mounted) return;
+      _avisar('No se pudo guardar la configuración del servidor.');
+      return;
+    }
+
+    if (!mounted) return;
     await context.read<AuthProvider>().iniciarSesion(
       usuario: _usuarioCtrl.text,
       contrasena: _claveCtrl.text,
     );
     // La redirección al panel la resuelve el router al cambiar el estado.
+  }
+
+  void _avisar(String mensaje) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(mensaje)));
   }
 
   @override
@@ -141,9 +169,28 @@ class _LoginScreenState extends State<LoginScreen> {
                         },
                       ),
                       const SizedBox(height: 24),
-                      _Etiqueta('Dominio UCi'),
+                      _Etiqueta('Dominio'),
                       const SizedBox(height: 8),
-                      const _CampoDominio(dominio: _dominioUci),
+                      _CampoLogin(
+                        controller: _dominioCtrl,
+                        hint: 'https://ejemplo.com/api/',
+                        icono: Icons.language_outlined,
+                        textInputAction: TextInputAction.done,
+                        validator: (valor) {
+                          if (valor == null || valor.trim().isEmpty) {
+                            return 'El dominio es obligatorio';
+                          }
+                          try {
+                            final uri = Uri.parse(valor.trim());
+                            if (!uri.isAbsolute) {
+                              return 'Ingrese una URL válida.';
+                            }
+                          } catch (_) {
+                            return 'Ingrese una URL válida.';
+                          }
+                          return null;
+                        },
+                      ),
                       if (auth.errorMessage != null) ...[
                         const SizedBox(height: 20),
                         _MensajeError(mensaje: auth.errorMessage!),
@@ -262,26 +309,6 @@ class _CampoLogin extends StatelessWidget {
         suffixIcon: sufijo,
         // En el login los campos son blancos con borde gris.
         fillColor: AppPalette.surface,
-      ),
-    );
-  }
-}
-
-class _CampoDominio extends StatelessWidget {
-  const _CampoDominio({required this.dominio});
-
-  final String dominio;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextFormField(
-      initialValue: dominio,
-      readOnly: true,
-      enableInteractiveSelection: false,
-      style: const TextStyle(color: AppPalette.textSecondary),
-      decoration: const InputDecoration(
-        fillColor: AppPalette.surface,
-        prefixIcon: Icon(Icons.language_outlined, size: 20),
       ),
     );
   }

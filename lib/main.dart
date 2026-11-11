@@ -10,9 +10,13 @@ import 'providers/detalle_solicitud_provider.dart';
 import 'providers/notificacion_provider.dart';
 import 'providers/panel_provider.dart';
 import 'providers/solicitud_provider.dart';
+import 'services/api_client.dart';
+import 'services/config_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await ConfigService.instance.inicializar();
+  await ApiClient.instance.inicializar();
   runApp(const XabalGestionaApp());
 }
 

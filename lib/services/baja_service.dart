@@ -172,6 +172,18 @@ class BajaService {
     return _solicitudDeRespuesta(datos, id);
   }
 
+  /// `POST /api/bajas/{id}/cerrar-legacy/` — cierre desde estado 1 o 3 (solo admin/RRHH).
+  Future<SolicitudBaja> cerrarLegacy(int id) async {
+    final datos = await _client.post(ApiConfig.bajaCerrarLegacy('$id'));
+    return _solicitudDeRespuesta(datos, id);
+  }
+
+  /// `POST /api/bajas/{id}/cerrar-async/` — cierre asíncrono desde estado 3 (solo admin/RRHH).
+  Future<SolicitudBaja> cerrarAsync(int id) async {
+    final datos = await _client.post(ApiConfig.bajaCerrarAsync('$id'));
+    return _solicitudDeRespuesta(datos, id);
+  }
+
   SolicitudBaja _solicitudDeRespuesta(dynamic datos, int id) {
     if (datos is Map) {
       return SolicitudBaja.fromJson(Map<String, dynamic>.from(datos));
