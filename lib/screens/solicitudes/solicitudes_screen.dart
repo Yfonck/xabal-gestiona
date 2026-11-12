@@ -46,6 +46,7 @@ class _SolicitudesScreenState extends State<SolicitudesScreen> {
   Timer? _debounce;
   _OpcionPeriodo? _periodo = _periodos.first;
   DateTimeRange? _rangoPersonalizado;
+  String? _filtroActivoTexto;
 
   @override
   void initState() {
@@ -85,18 +86,32 @@ class _SolicitudesScreenState extends State<SolicitudesScreen> {
   }
 
   Future<void> _recargar() async {
-    final ahora = DateTime.now();
+    final ahora = DateTime.utc(DateTime.now().year, DateTime.now().month, DateTime.now().day);
     final hoy = DateTime(ahora.year, ahora.month, ahora.day);
 
     DateTime? desde;
     DateTime? hasta;
+    String? filtroActivo;
 
     if (_rangoPersonalizado != null) {
-      desde = _rangoPersonalizado!.start;
-      hasta = _rangoPersonalizado!.end;
+      final rango = _rangoPersonalizado!;
+      desde = DateTime.utc(rango.start.year, rango.start.month, rango.start.day);
+      hasta = DateTime.utc(rango.end.year, rango.end.month, rango.end.day);
+      filtroActivo =
+          '${_formatoFecha.format(rango.start)} - '
+          '${_formatoFecha.format(rango.end)}';
     } else if (_periodo?.dias != null) {
-      desde = hoy.subtract(Duration(days: _periodo!.dias! - 1));
-      hasta = hoy;
+      final periodo = _periodo!;
+      final dias = periodo.dias;
+      if (dias != null) {
+        final desdeLocal = hoy.subtract(Duration(days: dias - 1));
+        final hastaLocal = hoy;
+        desde = desdeLocal;
+        hasta = hastaLocal;
+        filtroActivo = '${periodo.etiqueta} '
+            '(${_formatoFecha.format(desdeLocal)} - '
+            '${_formatoFecha.format(hastaLocal)})';
+      }
     }
 
     if (!mounted) return;
@@ -105,6 +120,8 @@ class _SolicitudesScreenState extends State<SolicitudesScreen> {
       fechaDesde: desde,
       fechaHasta: hasta,
     );
+    if (!mounted) return;
+    setState(() => _filtroActivoTexto = filtroActivo);
   }
 
   Future<void> _elegirRango() async {
@@ -300,6 +317,51 @@ class _SolicitudesScreenState extends State<SolicitudesScreen> {
                 ],
               ),
             ),
+            if (_filtroActivoTexto != null) ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.filter_list,
+                      size: 16,
+                      color: AppPalette.primary,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Filtrando por: $_filtroActivoTexto',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppPalette.primary,
+                        ),
+                      ),
+                    ),
+                    if (_periodo?.etiqueta == 'Todo el tiempo' ||
+                        _rangoPersonalizado == null &&
+                            _periodo?.etiqueta == 'Todo el tiempo')
+                      const SizedBox.shrink()
+                    else
+                      IconButton(
+                        icon: const Icon(
+                          Icons.filter_alt_off,
+                          size: 20,
+                          color: AppPalette.textSecondary,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _periodo = _periodos.last;
+                            _rangoPersonalizado = null;
+                          });
+                          _recargar();
+                        },
+                        tooltip: 'Quitar filtro',
+                      ),
+                  ],
+                ),
+              ),
+            ],
             Expanded(
               child: Container(
                 margin: const EdgeInsets.fromLTRB(16, 4, 16, 0),

@@ -12,6 +12,7 @@ import 'providers/panel_provider.dart';
 import 'providers/solicitud_provider.dart';
 import 'services/api_client.dart';
 import 'services/config_service.dart';
+import 'widgets/inactividad_listener.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -66,11 +67,13 @@ class _XabalGestionaAppState extends State<XabalGestionaApp> {
           create: (_) => DetalleSolicitudProvider(),
         ),
       ],
-      child: MaterialApp.router(
-        title: 'XABAL Gestiona',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light,
-        routerConfig: _router,
+      child: InactividadListener(
+        child: MaterialApp.router(
+          title: 'XABAL Gestiona',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light,
+          routerConfig: _router,
+        ),
       ),
     );
   }

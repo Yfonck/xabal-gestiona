@@ -30,8 +30,12 @@ class _PersonasScreenState extends State<PersonasScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _personas.cargarFiltros();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await _personas.cargarFiltros();
+      if (!mounted) return;
+      // Cargar todas las personas por defecto al abrir la pantalla
+      await _buscar('');
     });
   }
 

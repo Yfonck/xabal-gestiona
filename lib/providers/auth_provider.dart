@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../models/api_error.dart';
@@ -11,6 +13,7 @@ enum EstadoAuth { inicializando, noAutenticado, autenticado }
 class AuthProvider extends ChangeNotifier {
   AuthProvider({AuthService? servicio}) : _servicio = servicio ?? AuthService() {
     _servicio.apiClient.onSesionExpirada = _alExpirarSesion;
+    _iniciarTemporizadorInactividad();
   }
 
   final AuthService _servicio;
@@ -22,6 +25,10 @@ class AuthProvider extends ChangeNotifier {
 
   /// Se activa cuando el backend invalidó la sesión (sesión única).
   bool _sesionExpirada = false;
+
+  /// Temporizador de inactividad (10 minutos).
+  Timer? _temporizadorInactividad;
+  static const Duration _duracionInactividad = Duration(minutes: 10);
 
   EstadoAuth get estado => _estado;
   Usuario? get usuario => _usuario;
@@ -41,6 +48,10 @@ class AuthProvider extends ChangeNotifier {
     _estado = usuario == null ? EstadoAuth.noAutenticado : EstadoAuth.autenticado;
     _cargando = false;
     notifyListeners();
+
+    if (_estado == EstadoAuth.autenticado) {
+      _reiniciarTemporizadorInactividad();
+    }
   }
 
   /// Inicia sesión. Devuelve `true` si el backend aceptó las credenciales.
@@ -62,6 +73,7 @@ class AuthProvider extends ChangeNotifier {
       );
       _usuario = sesion.usuario;
       _estado = EstadoAuth.autenticado;
+      _reiniciarTemporizadorInactividad();
       return true;
     } on ApiException catch (error) {
       _estado = EstadoAuth.noAutenticado;
@@ -82,6 +94,7 @@ class AuthProvider extends ChangeNotifier {
     _cargando = true;
     notifyListeners();
 
+    _temporizadorInactividad?.cancel();
     await _servicio.cerrarSesion();
 
     _usuario = null;
@@ -97,6 +110,7 @@ class AuthProvider extends ChangeNotifier {
     if (!autenticado) return;
     try {
       _usuario = await _servicio.obtenerPerfil();
+      _reiniciarTemporizadorInactividad();
       notifyListeners();
     } on ApiException {
       // Si el error es de sesión, el ApiClient ya disparó onSesionExpirada.
@@ -113,6 +127,37 @@ class AuthProvider extends ChangeNotifier {
   void reconocerSesionExpirada() {
     _sesionExpirada = false;
     notifyListeners();
+  }
+
+  /// Reinicia el temporizador de inactividad. Debe llamarse en cada interacción
+  /// del usuario (toques, teclado, etc.).
+  void _reiniciarTemporizadorInactividad() {
+    _temporizadorInactividad?.cancel();
+    _temporizadorInactividad = Timer(
+      _duracionInactividad,
+      _cerrarSesionPorInactividad,
+    );
+  }
+
+  /// Inicia el temporizador al crear el proveedor.
+  void _iniciarTemporizadorInactividad() {
+    _reiniciarTemporizadorInactividad();
+  }
+
+  /// Cierra la sesión por inactividad y notifica con un mensaje.
+  Future<void> _cerrarSesionPorInactividad() async {
+    _temporizadorInactividad?.cancel();
+    await cerrarSesion();
+    _errorMessage = 'Sesión cerrada por inactividad.';
+    _sesionExpirada = true;
+    notifyListeners();
+  }
+
+  /// Notifica una interacción del usuario para reiniciar el temporizador.
+  void notificarInteraccion() {
+    if (_estado == EstadoAuth.autenticado) {
+      _reiniciarTemporizadorInactividad();
+    }
   }
 
   void _alExpirarSesion() {
@@ -142,6 +187,7 @@ class AuthProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _temporizadorInactividad?.cancel();
     _servicio.apiClient.onSesionExpirada = null;
     super.dispose();
   }

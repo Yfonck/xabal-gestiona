@@ -19,6 +19,7 @@ class Usuario {
     this.idEstructura,
     this.nombreEstructura,
     this.nombreResponsabilidad,
+    this.idResponsabilidad,
     this.nombreRolUniversitario,
     this.estructuras = const <int>[],
   });
@@ -41,8 +42,24 @@ class Usuario {
   final int? idEstructura;
   final String? nombreEstructura;
   final String? nombreResponsabilidad;
+  final int? idResponsabilidad;
   final String? nombreRolUniversitario;
   final List<int> estructuras;
+
+  /// Verdadero si es el Director de la DRH (id_responsabilidad == 122).
+  bool get esDRH => idResponsabilidad == 122;
+
+  /// Verdadero si es directivo y es DRH (puede crear bajas para cualquier persona).
+  bool get esDirectivoDRH => esDirectivo && esDRH;
+
+  /// Verdadero si es directivo pero NO es DRH (solo su área).
+  bool get esDirectivoOtro => esDirectivo && !esDRH;
+
+  /// Puede crear solicitudes de baja (DRH o cualquier directivo).
+  bool get puedeCrearBaja => esDirectivoDRH || esDirectivoOtro;
+
+  /// Puede ver todas las áreas en el panel (solo DRH).
+  bool get puedeVerTodasLasAreas => esDRH;
 
   factory Usuario.fromJson(Map<String, dynamic> json) {
     return Usuario(
@@ -61,6 +78,7 @@ class Usuario {
       idEstructura: _enteroONulo(json['id_estructura']),
       nombreEstructura: _textoONulo(json['nombre_estructura']),
       nombreResponsabilidad: _textoONulo(json['nombre_responsabilidad']),
+      idResponsabilidad: _enteroONulo(json['id_responsabilidad']),
       nombreRolUniversitario: _textoONulo(json['nombre_rol_universitario']),
       estructuras: (json['estructuras'] as List<dynamic>?)
               ?.map(_enteroONulo)

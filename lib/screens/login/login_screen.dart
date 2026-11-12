@@ -39,8 +39,10 @@ class _LoginScreenState extends State<LoginScreen> {
       if (auth.sesionExpirada && mounted) {
         auth.reconocerSesionExpirada();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Su sesión finalizó. Inicie sesión nuevamente.'),
+          SnackBar(
+            content: Text(
+              auth.errorMessage ?? 'Su sesión finalizó. Inicie sesión nuevamente.',
+            ),
           ),
         );
       }
