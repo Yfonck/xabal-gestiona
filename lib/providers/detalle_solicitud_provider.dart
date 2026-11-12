@@ -83,18 +83,46 @@ class DetalleSolicitudProvider extends ChangeNotifier {
     }
   }
 
-  /// Cancela la solicitud (2 → 5).
-  Future<void> cancelar(int id, {String motivo = ''}) async {
+  /// Cancela la solicitud con motivo (2 → 5).
+  Future<void> cancelarConMotivo(int id, {required String motivo}) async {
     _cargando = true;
     _errorMessage = null;
     notifyListeners();
     try {
-      await _servicio.cancelar(id);
+      await _servicio.cancelarConMotivo(id, motivo: motivo);
       await cargar(id);
     } on ApiException catch (error) {
       _errorMessage = error.mensaje;
     } catch (_) {
       _errorMessage = 'No se pudo cancelar la solicitud.';
+    } finally {
+      _cargando = false;
+      notifyListeners();
+    }
+  }
+
+  /// Actualiza tipo, causa y persona de la solicitud.
+  Future<void> actualizar({
+    required int id,
+    required int idTipoBaja,
+    required int idCausaBaja,
+    required String idPersona,
+  }) async {
+    _cargando = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _servicio.actualizar(
+        id: id,
+        idTipoBaja: idTipoBaja,
+        idCausaBaja: idCausaBaja,
+        idPersona: idPersona,
+      );
+      await cargar(id);
+    } on ApiException catch (error) {
+      _errorMessage = error.mensaje;
+    } catch (_) {
+      _errorMessage = 'No se pudo actualizar la solicitud.';
     } finally {
       _cargando = false;
       notifyListeners();

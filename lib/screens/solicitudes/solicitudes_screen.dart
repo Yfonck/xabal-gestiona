@@ -87,7 +87,7 @@ class _SolicitudesScreenState extends State<SolicitudesScreen> {
 
   Future<void> _recargar() async {
     final ahora = DateTime.utc(DateTime.now().year, DateTime.now().month, DateTime.now().day);
-    final hoy = DateTime(ahora.year, ahora.month, ahora.day);
+    final hoyUTC = DateTime.utc(ahora.year, ahora.month, ahora.day);
 
     DateTime? desde;
     DateTime? hasta;
@@ -100,17 +100,19 @@ class _SolicitudesScreenState extends State<SolicitudesScreen> {
       filtroActivo =
           '${_formatoFecha.format(rango.start)} - '
           '${_formatoFecha.format(rango.end)}';
-    } else if (_periodo?.dias != null) {
-      final periodo = _periodo!;
-      final dias = periodo.dias;
-      if (dias != null) {
-        final desdeLocal = hoy.subtract(Duration(days: dias - 1));
-        final hastaLocal = hoy;
-        desde = desdeLocal;
-        hasta = hastaLocal;
-        filtroActivo = '${periodo.etiqueta} '
-            '(${_formatoFecha.format(desdeLocal)} - '
-            '${_formatoFecha.format(hastaLocal)})';
+    } else {
+      final periodo = _periodo;
+      if (periodo != null) {
+        final dias = periodo.dias;
+        if (dias != null) {
+          final desdeUTC = hoyUTC.subtract(Duration(days: dias - 1));
+          final hastaUTC = hoyUTC;
+          desde = desdeUTC;
+          hasta = hastaUTC;
+          filtroActivo = '${periodo.etiqueta} '
+              '(${_formatoFecha.format(desdeUTC)} - '
+              '${_formatoFecha.format(hastaUTC)})';
+        }
       }
     }
 

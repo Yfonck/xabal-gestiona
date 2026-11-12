@@ -85,7 +85,7 @@ class BajaService {
       queryParameters: {
         if (fechaDesde != null) 'fecha_desde': _formatoFecha.format(fechaDesde),
         if (fechaHasta != null) 'fecha_hasta': _formatoFecha.format(fechaHasta),
-        'id_estructura': ?idEstructura,
+        if (idEstructura != null) 'id_estructura': idEstructura,
       },
     );
     final mapa = datos is Map
@@ -166,9 +166,32 @@ class BajaService {
     return _solicitudDeRespuesta(datos, id);
   }
 
-  /// `POST /api/bajas/{id}/cancelar/`.
-  Future<SolicitudBaja> cancelar(int id) async {
-    final datos = await _client.post(ApiConfig.bajaCancelar('$id'));
+  /// `PUT /api/bajas/{id}/` — actualizar solicitud (solo si no está finalizada).
+  ///
+  /// Nota: El backend actualmente responde "no implementado" para este endpoint.
+  Future<SolicitudBaja> actualizar({
+    required int id,
+    required int idTipoBaja,
+    required int idCausaBaja,
+    required String idPersona,
+  }) async {
+    final datos = await _client.put(
+      ApiConfig.baja('$id'),
+      data: {
+        'id_persona': idPersona,
+        'id_tipo_baja': idTipoBaja,
+        'id_causa_baja': idCausaBaja,
+      },
+    );
+    return _solicitudDeRespuesta(datos, id);
+  }
+
+  /// `POST /api/bajas/{id}/cancelar/` — cancelar con motivo.
+  Future<SolicitudBaja> cancelarConMotivo(int id, {required String motivo}) async {
+    final datos = await _client.post(
+      ApiConfig.bajaCancelar('$id'),
+      data: {'motivo': motivo},
+    );
     return _solicitudDeRespuesta(datos, id);
   }
 

@@ -5,7 +5,10 @@ import 'package:provider/provider.dart';
 
 import '../../config/routes.dart';
 import '../../config/theme.dart';
+import '../../models/api_error.dart';
 import '../../models/area_confirmacion.dart';
+import '../../models/filtros_baja.dart';
+import '../../models/opcion_filtro.dart';
 import '../../models/estado_solicitud.dart';
 import '../../models/solicitud_baja.dart';
 import '../../providers/auth_provider.dart';
@@ -15,6 +18,8 @@ import '../../widgets/app_drawer.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/encabezado_pantalla.dart';
 import '../../widgets/foto_cuadrada.dart';
+import '../../services/baja_service.dart';
+import '../../services/notificacion_service.dart';
 
 /// HU06 — Detalle de una solicitud de baja.
 ///
@@ -41,24 +46,74 @@ class _DetalleSolicitudScreenState extends State<DetalleSolicitudScreen> {
     });
   }
 
-  void _editar() {
-    // TODO(HU09): el backend aún no expone PATCH para solicitudes de baja.
-    _avisar('La edición de la solicitud estará disponible en la HU09.');
+  Future<void> _editar() async {
+    final resultado = await showDialog<bool>(
+      context: context,
+      builder: (context) => _DialogEditarSolicitud(idSolicitud: widget.idSolicitud),
+    );
+    if (resultado == true && mounted) {
+      await context.read<DetalleSolicitudProvider>().cargar(widget.idSolicitud);
+    }
   }
 
-  Future<void> _eliminar() async {
-    final confirmar = await mostrarConfirmacion(
-      context,
-      titulo: 'Eliminar solicitud',
-      mensaje: '¿Está seguro de que desea eliminar esta solicitud de baja?',
-      textoCancelar: 'Cancelar',
-      textoConfirmar: 'Eliminar',
+  Future<void> _cancelarConMotivo() async {
+    final motivoCtrl = TextEditingController();
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cancelar solicitud'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('¿Está seguro de que desea cancelar esta solicitud?'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: motivoCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Motivo de la cancelación',
+                hintText: 'Ingrese el motivo',
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('No, cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppPalette.error),
+            child: const Text('Sí, cancelar'),
+          ),
+        ],
+      ),
     );
-    if (!confirmar || !mounted) return;
-    // TODO(HU09): el backend aún no expone DELETE para solicitudes de baja.
-    _avisar(
-      'La eliminación estará disponible cuando el backend la habilite (HU09).',
+    if (confirmar != true || !mounted) return;
+    final motivo = motivoCtrl.text.trim();
+    if (motivo.isEmpty) {
+      _avisar('El motivo de cancelación es obligatorio.');
+      return;
+    }
+    await context.read<DetalleSolicitudProvider>().cancelarConMotivo(
+      widget.idSolicitud,
+      motivo: motivo,
     );
+    if (!mounted) return;
+    if (context.read<DetalleSolicitudProvider>().errorMessage == null) {
+      try {
+        await NotificacionService().crear(
+          titulo: 'Solicitud de baja pendiente de cancelación',
+          mensaje:
+              'El área ha solicitado cancelar la solicitud ID: ${widget.idSolicitud}. Motivo: $motivo',
+          link: '/bajas/${widget.idSolicitud}',
+        );
+        _avisar('Solicitud enviada a RRHH para revisión.');
+      } catch (_) {
+        _avisar('La solicitud se canceló pero no se pudo notificar a RRHH.');
+      }
+    }
   }
 
   Future<void> _confirmar() async {
@@ -66,7 +121,7 @@ class _DetalleSolicitudScreenState extends State<DetalleSolicitudScreen> {
   }
 
   Future<void> _cancelar() async {
-    await context.read<DetalleSolicitudProvider>().cancelar(widget.idSolicitud);
+    await context.read<DetalleSolicitudProvider>().cancelarConMotivo(widget.idSolicitud, motivo: '');
   }
 
   Future<void> _cerrar() async {
@@ -123,7 +178,7 @@ class _DetalleSolicitudScreenState extends State<DetalleSolicitudScreen> {
                 provider: provider,
                 auth: auth,
                 onEditar: _editar,
-                onEliminar: _eliminar,
+                onEliminar: _cancelarConMotivo,
                 onConfirmar: _confirmar,
                 onCancelar: _cancelar,
                 onCerrar: _cerrar,
@@ -1139,6 +1194,179 @@ class _MensajeError extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Diálogo para editar una solicitud de baja (tipo, causa y persona).
+class _DialogEditarSolicitud extends StatefulWidget {
+  const _DialogEditarSolicitud({required this.idSolicitud});
+
+  final int idSolicitud;
+
+  @override
+  State<_DialogEditarSolicitud> createState() => _DialogEditarSolicitudState();
+}
+
+class _DialogEditarSolicitudState extends State<_DialogEditarSolicitud> {
+  final _servicio = BajaService();
+  final _personaCtrl = TextEditingController();
+
+  FiltrosBaja? _filtros;
+  OpcionFiltro? _tipoSeleccionado;
+  OpcionFiltro? _causaSeleccionada;
+  bool _cargandoFiltros = true;
+  bool _guardando = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarFiltros();
+  }
+
+  @override
+  void dispose() {
+    _personaCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _cargarFiltros() async {
+    try {
+      _filtros = await _servicio.filtros();
+    } catch (_) {
+      _filtros = null;
+    }
+    if (mounted) setState(() => _cargandoFiltros = false);
+  }
+
+  Future<void> _guardar() async {
+    if (_tipoSeleccionado == null ||
+        _causaSeleccionada == null ||
+        _personaCtrl.text.trim().isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Complete todos los campos.'),
+            backgroundColor: AppPalette.error,
+          ),
+        );
+      }
+      return;
+    }
+
+    setState(() => _guardando = true);
+    try {
+      await context.read<DetalleSolicitudProvider>().actualizar(
+        id: widget.idSolicitud,
+        idTipoBaja: _tipoSeleccionado!.id!,
+        idCausaBaja: _causaSeleccionada!.id!,
+        idPersona: _personaCtrl.text.trim(),
+      );
+      if (mounted) Navigator.of(context).pop(true);
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error.mensaje),
+            backgroundColor: AppPalette.error,
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo actualizar la solicitud.'),
+            backgroundColor: AppPalette.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _guardando = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_cargandoFiltros || _filtros == null) {
+      return const AlertDialog(
+        title: Text('Editar solicitud'),
+        content: CircularProgressIndicator(),
+      );
+    }
+
+    final tipos = OpcionFiltro.conIdNumericoUnico(_filtros!.tipos);
+    final causas = OpcionFiltro.conIdNumericoUnico(_filtros!.causas);
+
+    return AlertDialog(
+      title: const Text('Editar solicitud de baja'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButtonFormField<OpcionFiltro>(
+              value: _tipoSeleccionado,
+              hint: const Text('Tipo de baja'),
+              items: tipos
+                  .map((t) => DropdownMenuItem<OpcionFiltro>(
+                        value: t,
+                        child: Text(t.etiqueta),
+                      ))
+                  .toList(),
+              onChanged: (v) => setState(() => _tipoSeleccionado = v),
+              decoration: const InputDecoration(
+                labelText: 'Tipo de baja',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<OpcionFiltro>(
+              value: _causaSeleccionada,
+              hint: const Text('Causa de baja'),
+              items: causas
+                  .map((c) => DropdownMenuItem<OpcionFiltro>(
+                        value: c,
+                        child: Text(c.etiqueta),
+                      ))
+                  .toList(),
+              onChanged: (v) => setState(() => _causaSeleccionada = v),
+              decoration: const InputDecoration(
+                labelText: 'Causa de baja',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _personaCtrl,
+              decoration: const InputDecoration(
+                labelText: 'ID de persona (solicitante)',
+                hintText: 'Ej: 12345',
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.number,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _guardando ? null : () => Navigator.of(context).pop(false),
+          child: const Text('Cancelar'),
+        ),
+        ElevatedButton(
+          onPressed: _guardando ? null : _guardar,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppPalette.tertiary,
+          ),
+          child: _guardando
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Guardar'),
+        ),
+      ],
     );
   }
 }

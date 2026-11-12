@@ -48,7 +48,7 @@ class _PersonasScreenState extends State<PersonasScreen> {
   Future<void> _buscar(String termino) {
     return _personas.buscar(
       termino,
-      idEstructura: _personas.idEstructura,
+      idEstructura: null,
       soloActivas: _personas.soloActivas,
     );
   }

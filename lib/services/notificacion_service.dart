@@ -33,4 +33,21 @@ class NotificacionService {
   Future<void> limpiarTodas() async {
     await _client.delete(ApiConfig.notificacionesLimpiar);
   }
+
+  /// `POST /api/notificaciones/` — crear notificación.
+  Future<Notificacion> crear({
+    required String titulo,
+    required String mensaje,
+    String? link,
+  }) async {
+    final datos = await _client.post(
+      ApiConfig.notificaciones,
+      data: {
+        'titulo': titulo,
+        'mensaje': mensaje,
+        if (link != null) 'link': link,
+      },
+    );
+    return Notificacion.fromJson(Map<String, dynamic>.from(datos));
+  }
 }

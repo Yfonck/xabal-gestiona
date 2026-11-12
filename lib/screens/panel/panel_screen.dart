@@ -123,14 +123,6 @@ class _PanelScreenState extends State<PanelScreen> {
               onAbrirMenu: () => _scaffoldKey.currentState?.openDrawer(),
               onNotificaciones: _abrirNotificaciones,
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
-              child: _SelectorArea(
-                areas: panel.areas,
-                seleccionada: panel.idEstructuraSeleccionada,
-                onCambiar: (id) => context.read<PanelProvider>().seleccionarArea(id),
-              ),
-            ),
             Expanded(child: _Contenido(panel: panel, onRefrescar: _recargar)),
           ],
         ),
@@ -220,61 +212,6 @@ class _CampanaNotificaciones extends StatelessWidget {
             color: AppPalette.primary,
             size: 28,
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SelectorArea extends StatelessWidget {
-  const _SelectorArea({
-    required this.areas,
-    required this.seleccionada,
-    required this.onCambiar,
-  });
-
-  final List<OpcionFiltro> areas;
-  final int? seleccionada;
-  final ValueChanged<int?> onCambiar;
-
-  @override
-  Widget build(BuildContext context) {
-    final opciones = OpcionFiltro.conIdNumericoUnico(areas);
-    final valorValido =
-        opciones.any((opcion) => opcion.id == seleccionada) ? seleccionada : null;
-
-    return Container(
-      height: 46,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(
-        color: AppPalette.inputFill,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppPalette.outline),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<int?>(
-          isExpanded: true,
-          value: valorValido,
-          icon: const Icon(Icons.keyboard_arrow_down,
-              color: AppPalette.textSecondary),
-          style: const TextStyle(
-            fontSize: 15,
-            color: AppPalette.textSecondary,
-            fontWeight: FontWeight.w600,
-          ),
-          items: [
-            const DropdownMenuItem<int?>(
-              value: null,
-              child: Text('Todas las áreas'),
-            ),
-            ...opciones.map(
-              (area) => DropdownMenuItem<int?>(
-                value: area.id,
-                child: Text(area.etiqueta, overflow: TextOverflow.ellipsis),
-              ),
-            ),
-          ],
-          onChanged: onCambiar,
         ),
       ),
     );

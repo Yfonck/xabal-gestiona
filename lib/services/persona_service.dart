@@ -24,7 +24,7 @@ class PersonaService {
         if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
         'page': page,
         'page_size': pageSize,
-        'id_estructura': ?idEstructura,
+        if (idEstructura != null) 'id_estructura': idEstructura,
         if (soloActivas == true) 'baja': false,
       },
     );
