@@ -16,6 +16,7 @@ class Persona {
     this.nombreEstructura,
     this.nombreResponsabilidad,
     this.nombreRolUniversitario,
+    this.idRolUniversitario,
     this.baja = false,
     this.fotoBase64,
   });
@@ -32,6 +33,7 @@ class Persona {
   final String? nombreEstructura;
   final String? nombreResponsabilidad;
   final String? nombreRolUniversitario;
+  final int? idRolUniversitario;
   final bool baja;
   final String? fotoBase64;
 
@@ -64,6 +66,7 @@ class Persona {
       nombreEstructura: _texto(json['nombre_estructura']),
       nombreResponsabilidad: _texto(json['nombre_responsabilidad']),
       nombreRolUniversitario: _texto(json['nombre_rol_universitario']),
+      idRolUniversitario: _entero(json['id_rol_universitario']),
       baja: json['baja'] == true,
       fotoBase64: _texto(json['foto_base64']),
     );

@@ -160,6 +160,52 @@ class BajasPendientesProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Confirma el área de la solicitud (2 → 3).
+  Future<void> confirmarArea(int id) async {
+    _cargando = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _servicio.confirmar(id);
+      await cargar(
+        idEstructura: _idEstructura,
+        idTipoBaja: _idTipoBaja,
+        idCausaBaja: _idCausaBaja,
+        busqueda: _busqueda,
+      );
+    } on ApiException catch (error) {
+      _errorMessage = error.mensaje;
+    } catch (_) {
+      _errorMessage = 'No se pudo confirmar el área.';
+    } finally {
+      _cargando = false;
+      notifyListeners();
+    }
+  }
+
+  /// Cancela la solicitud con motivo (2 → 5).
+  Future<void> cancelarConMotivo(int id, {required String motivo}) async {
+    _cargando = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _servicio.cancelarConMotivo(id, motivo: motivo);
+      await cargar(
+        idEstructura: _idEstructura,
+        idTipoBaja: _idTipoBaja,
+        idCausaBaja: _idCausaBaja,
+        busqueda: _busqueda,
+      );
+    } on ApiException catch (error) {
+      _errorMessage = error.mensaje;
+    } catch (_) {
+      _errorMessage = 'No se pudo cancelar la solicitud.';
+    } finally {
+      _cargando = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> _cargarDatos() async {
     try {
       final resultados = await Future.wait([

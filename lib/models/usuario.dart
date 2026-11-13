@@ -20,7 +20,8 @@ class Usuario {
     this.nombreEstructura,
     this.nombreResponsabilidad,
     this.idResponsabilidad,
-    this.nombreRolUniversitario,
+      this.nombreRolUniversitario,
+    this.idRolUniversitario,
     this.estructuras = const <int>[],
   });
 
@@ -44,6 +45,7 @@ class Usuario {
   final String? nombreResponsabilidad;
   final int? idResponsabilidad;
   final String? nombreRolUniversitario;
+  final int? idRolUniversitario;
   final List<int> estructuras;
 
   /// Verdadero si es el Director de la DRH (id_responsabilidad == 122).
@@ -80,6 +82,7 @@ class Usuario {
       nombreResponsabilidad: _textoONulo(json['nombre_responsabilidad']),
       idResponsabilidad: _enteroONulo(json['id_responsabilidad']),
       nombreRolUniversitario: _textoONulo(json['nombre_rol_universitario']),
+      idRolUniversitario: _enteroONulo(json['id_rol_universitario']),
       estructuras: (json['estructuras'] as List<dynamic>?)
               ?.map(_enteroONulo)
               .whereType<int>()

@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import '../../config/routes.dart';
 import '../../config/theme.dart';
 import '../../models/estadisticas_baja.dart';
-import '../../models/opcion_filtro.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/notificacion_provider.dart';
 import '../../providers/panel_provider.dart';

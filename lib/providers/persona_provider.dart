@@ -134,4 +134,22 @@ class PersonaProvider extends ChangeNotifier {
       _hayMas = false;
     }
   }
+
+  /// Busca directivos (rol 21) de un área específica para notificaciones.
+  Future<List<Persona>> buscarDirectivosPorArea(int idEstructura) async {
+    try {
+      final respuesta = await _servicio.buscar(
+        search: '',
+        page: 1,
+        pageSize: 100,
+        idEstructura: idEstructura,
+        soloActivas: true,
+      );
+      return respuesta.results
+          .where((p) => p.idRolUniversitario == 21)
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
 }

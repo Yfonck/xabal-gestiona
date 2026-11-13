@@ -3,11 +3,14 @@ import 'package:provider/provider.dart';
 
 import '../../config/theme.dart';
 import '../../models/api_error.dart';
+import '../../models/area_confirmacion.dart';
 import '../../models/filtros_baja.dart';
 import '../../models/opcion_filtro.dart';
 import '../../models/persona.dart';
 import '../../providers/persona_provider.dart';
 import '../../providers/solicitud_provider.dart';
+import '../../services/baja_service.dart';
+import '../../services/notificacion_service.dart';
 import '../../widgets/foto_avatar.dart';
 import '../../widgets/searchable_list.dart';
 
@@ -52,12 +55,16 @@ class _CrearSolicitudDialogState extends State<CrearSolicitudDialog> {
     });
 
     try {
-      await context.read<SolicitudProvider>().crear(
+      final nuevaSolicitud = await context.read<SolicitudProvider>().crear(
             idPersona: _persona!.idPersona,
             idTipoBaja: _tipo!.id!,
             idCausaBaja: _causa!.id!,
           );
+
       if (mounted) Navigator.of(context).pop(true);
+
+      // Notificar a los directivos de las áreas que deben confirmar la baja
+      _notificarDirectivosDeAreas(nuevaSolicitud.idSolicitud);
     } on ApiException catch (error) {
       if (!mounted) return;
       setState(() {
@@ -70,6 +77,32 @@ class _CrearSolicitudDialogState extends State<CrearSolicitudDialog> {
         _guardando = false;
         _errorMensaje = 'No se pudo guardar la solicitud.';
       });
+    }
+  }
+
+  /// Notifica a los directivos de las áreas que deben confirmar la baja.
+  Future<void> _notificarDirectivosDeAreas(int idSolicitud) async {
+    try {
+      final servicioBajas = BajaService();
+      final areas = await servicioBajas.areasConfirmacion(idSolicitud);
+
+      final personaProvider = PersonaProvider();
+      final notificacionService = NotificacionService();
+
+      for (final area in areas) {
+        final directivos = await personaProvider.buscarDirectivosPorArea(area.idArea!);
+
+        for (final directivo in directivos) {
+          await notificacionService.crear(
+            titulo: 'Nueva solicitud de baja pendiente',
+            mensaje:
+                'Se ha creado una nueva solicitud de baja que requiere confirmación de su área. Solicitante: ${_persona!.nombre}.',
+            link: '/bajas/${idSolicitud}',
+          );
+        }
+      }
+    } catch (_) {
+      // No bloquear el flujo principal si falla el envío de notificaciones
     }
   }
 
