@@ -17,6 +17,7 @@ class Persona {
     this.nombreResponsabilidad,
     this.nombreRolUniversitario,
     this.idRolUniversitario,
+    this.nombreUsuario,
     this.baja = false,
     this.fotoBase64,
   });
@@ -34,6 +35,9 @@ class Persona {
   final String? nombreResponsabilidad;
   final String? nombreRolUniversitario;
   final int? idRolUniversitario;
+
+  /// Usuario del sistema (necesario para dirigir notificaciones).
+  final String? nombreUsuario;
   final bool baja;
   final String? fotoBase64;
 
@@ -67,6 +71,7 @@ class Persona {
       nombreResponsabilidad: _texto(json['nombre_responsabilidad']),
       nombreRolUniversitario: _texto(json['nombre_rol_universitario']),
       idRolUniversitario: _entero(json['id_rol_universitario']),
+      nombreUsuario: _texto(json['nombre_usuario'] ?? json['username']),
       baja: json['baja'] == true,
       fotoBase64: _texto(json['foto_base64']),
     );

@@ -123,6 +123,12 @@ La solicitud se crea directamente en estado **2 (En Trámite)**, no en 1.
 
 Campos: `id`, `id_usuario`, `titulo`, `mensaje`, `leida`, `fecha_creacion`, `link`.
 
+**No existe creación de notificaciones.** `NotificacionViewSet` es un `APIView`
+con `get()` y `post(self, request, pk)`; un `POST /api/notificaciones/` sin `pk`
+no llega a ningún método que cree el registro. Además `id_usuario` está en
+`read_only_fields` del serializer, así que no se puede elegir el destinatario.
+Ver "Pendientes conocidos".
+
 ## Catálogos (solo administradores)
 
 | Endpoint | Método |
@@ -158,3 +164,36 @@ Los estados 5 y 6 existen en el backend aunque no estén en las HU originales.
 - HU07/HU08 son borradores: se implementan con las transiciones reales
   (`confirmar`, `cerrar`, `cerrar-legacy`, `cancelar`).
 - No existe relación tipo→causa; las causas se agrupan por categoría.
+
+### Cambios de backend solicitados
+
+- **Notificar a los directivos del área al crear una baja.** La app
+  (`crear_solicitud_dialog.dart` → `NotificacionService.crear`) envía una
+  notificación por cada directivo del área, pero hoy ese envío **no puede
+  funcionar** (ver "Notificaciones"). El backend ya tiene el mecanismo
+  correcto: `crear_solicitud()` emite el evento `baja.solicitud.creada` y
+  `notification_service.resolver_destinatarios()` soporta
+  `notificar_directivos_area`; solo actúa si existe una
+  `ConfiguracionNotificacion` activa en BD. Para que la app funcione se
+  requiere:
+  1. Implementar `POST /api/notificaciones/` (o un endpoint dedicado
+     `POST /api/notificaciones/directivos-area/`).
+  2. Hacer escribible `id_usuario` en `NotificacionSerializer`, validando que
+     el emisor sea directivo/RRHH del área destino (hoy es
+     `read_only_fields`).
+  3. Incluir `nombre_usuario` en `GET /api/personas/`
+     (`apps/core/repositories_persona.py` no lo selecciona); sin ese campo la
+     app no puede saber el destinatario. El parser Dart ya lo acepta como
+     `nombre_usuario` o `username`.
+  4. Alternativa: activar la configuración `notificar_directivos_area` en BD y
+     dejar que el backend emita la notificación; entonces la app no necesita
+     enviarla.
+- **Cancelar** solo lo permite el backend a admin/RRHH: la comprobación de
+  "creador" en `cancelar_solicitud` compara `username` con
+  `id_persona_solicitante` (tipos distintos) y nunca coincide, así que un
+  directivo creador recibe `403`. La app muestra "Cancelar" solo a
+  `is_admin` o `permiso_rrhh`.
+- **Confirmar área** mueve la solicitud de **2 → 4 (Baja)** cuando todas las
+  áreas confirman (`confirmar_area_orm`), no a 3. Las áreas ya confirmadas
+  quedan fuera de `/bajas/pendientes/`, por eso la app muestra "Confirmar" a
+  cualquier `is_directivo` en esa pantalla sin comparar estructuras.

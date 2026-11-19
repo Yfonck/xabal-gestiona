@@ -106,6 +106,86 @@ class _BajasPendientesScreenState extends State<BajasPendientesScreen> {
     context.push(AppRoutes.detalleSolicitud('${solicitud.idSolicitud}'));
   }
 
+  /// Confirma el área del usuario para la solicitud indicada (2 → 3/4).
+  Future<void> _confirmarArea(int id) async {
+    final provider = context.read<BajasPendientesProvider>();
+    await provider.confirmarArea(id);
+    if (!mounted) return;
+    final error = provider.errorMessage;
+    _mostrarMensaje(
+      error ?? 'Área confirmada correctamente.',
+      esError: error != null,
+    );
+  }
+
+  /// Cancela la solicitud solicitando un motivo obligatorio.
+  Future<void> _cancelarSolicitud(int id) async {
+    final motivoCtrl = TextEditingController();
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cancelar solicitud'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('¿Está seguro de que desea cancelar esta solicitud?'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: motivoCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Motivo de cancelación',
+                hintText: 'Ingrese el motivo',
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('No, cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppPalette.error),
+            child: const Text('Sí, cancelar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmar != true || !mounted) return;
+
+    final motivo = motivoCtrl.text.trim();
+    if (motivo.isEmpty) {
+      _mostrarMensaje(
+        'El motivo de cancelación es obligatorio.',
+        esError: true,
+      );
+      return;
+    }
+
+    final provider = context.read<BajasPendientesProvider>();
+    await provider.cancelarConMotivo(id, motivo: motivo);
+    if (!mounted) return;
+    final error = provider.errorMessage;
+    _mostrarMensaje(
+      error ?? 'Solicitud cancelada correctamente.',
+      esError: error != null,
+    );
+  }
+
+  void _mostrarMensaje(String mensaje, {bool esError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(mensaje),
+          backgroundColor: esError ? AppPalette.error : AppPalette.success,
+        ),
+      );
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<BajasPendientesProvider>();
@@ -149,61 +229,8 @@ class _BajasPendientesScreenState extends State<BajasPendientesScreen> {
                 busqueda: _busqueda,
                 onBuscar: () => provider.buscar(_busqueda.text),
                 onVer: _verDetalle,
-                onConfirmar: (id) async {
-                  await context.read<BajasPendientesProvider>().confirmarArea(id);
-                },
-                onCancelar: (id) async {
-                  final motivoCtrl = TextEditingController();
-                  final confirmar = await showDialog<bool>(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Cancelar solicitud'),
-                      content: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text('¿Está seguro de que desea cancelar esta solicitud?'),
-                          const SizedBox(height: 16),
-                          TextField(
-                            controller: motivoCtrl,
-                            decoration: const InputDecoration(
-                              labelText: 'Motivo de cancelación',
-                              hintText: 'Ingrese el motivo',
-                            ),
-                            maxLines: 3,
-                          ),
-                        ],
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.of(context).pop(false),
-                          child: const Text('No, cancelar'),
-                        ),
-                        ElevatedButton(
-                          onPressed: () => Navigator.of(context).pop(true),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppPalette.error,
-                          ),
-                          child: const Text('Sí, cancelar'),
-                        ),
-                      ],
-                    ),
-                  );
-                  if (confirmar != true || !mounted) return;
-                  final motivo = motivoCtrl.text.trim();
-                  if (motivo.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('El motivo de cancelación es obligatorio.'),
-                        backgroundColor: AppPalette.error,
-                      ),
-                    );
-                    return;
-                  }
-                  await context.read<BajasPendientesProvider>().cancelarConMotivo(
-                    id,
-                    motivo: motivo,
-                  );
-                },
+                onConfirmar: _confirmarArea,
+                onCancelar: _cancelarSolicitud,
                 usuario: usuario,
               ),
             ),
@@ -424,8 +451,8 @@ class _Contenido extends StatelessWidget {
   final TextEditingController busqueda;
   final Future<void> Function() onBuscar;
   final ValueChanged<SolicitudBaja> onVer;
-  final VoidCallback onConfirmar;
-  final VoidCallback onCancelar;
+  final ValueChanged<int> onConfirmar;
+  final ValueChanged<int> onCancelar;
   final Usuario? usuario;
 
   @override
@@ -645,8 +672,8 @@ class _TarjetaListado extends StatelessWidget {
   final TextEditingController busqueda;
   final Future<void> Function() onBuscar;
   final ValueChanged<SolicitudBaja> onVer;
-  final VoidCallback onConfirmar;
-  final VoidCallback onCancelar;
+  final ValueChanged<int> onConfirmar;
+  final ValueChanged<int> onCancelar;
   final Usuario? usuario;
 
   @override
@@ -775,7 +802,7 @@ class _CabeceraTabla extends StatelessWidget {
           SizedBox(width: 50, child: Text('Foto', style: estilo)),
           Expanded(child: Text('Solicitante', style: estilo)),
           SizedBox(
-            width: 90,
+            width: 116,
             child: Text('Acciones', textAlign: TextAlign.center, style: estilo),
           ),
         ],
@@ -795,8 +822,8 @@ class _ListaPendientes extends StatelessWidget {
 
   final BajasPendientesProvider provider;
   final ValueChanged<SolicitudBaja> onVer;
-  final VoidCallback onConfirmar;
-  final VoidCallback onCancelar;
+  final ValueChanged<int> onConfirmar;
+  final ValueChanged<int> onCancelar;
   final Usuario? usuario;
 
   @override
@@ -894,6 +921,12 @@ class _FilaPendiente extends StatelessWidget {
   Widget build(BuildContext context) {
     final nombre = solicitud.nombreSolicitanteCompleto ?? 'Sin nombre';
     final user = usuario;
+    // El endpoint /bajas/pendientes/ solo devuelve filas de áreas del usuario
+    // y excluye las que ya confirmó, por lo que un directivo en esta pantalla
+    // es directivo de un área implicada.
+    final puedeConfirmar = user?.esDirectivo == true;
+    // El backend solo permite cancelar al creador, admin o RRHH.
+    final puedeCancelar = user?.esAdmin == true || user?.permisoRrhh == true;
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
@@ -925,7 +958,7 @@ class _FilaPendiente extends StatelessWidget {
             ),
           ),
           SizedBox(
-            width: 90,
+            width: 116,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
@@ -935,15 +968,16 @@ class _FilaPendiente extends StatelessWidget {
                   tooltip: 'Ver detalle',
                   onTap: onVer,
                 ),
-                if (user != null &&
-                    user.idRolUniversitario == 21 &&
-                    user.idEstructura == solicitud.idEstructura) ...[
+                if (puedeConfirmar) ...[
+                  const SizedBox(width: 6),
                   BotonAccion(
                     icono: Icons.check_circle,
                     color: AppPalette.success,
                     tooltip: 'Confirmar',
                     onTap: onConfirmar,
                   ),
+                ],
+                if (puedeCancelar) ...[
                   const SizedBox(width: 6),
                   BotonAccion(
                     icono: Icons.cancel,

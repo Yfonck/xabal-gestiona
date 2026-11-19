@@ -87,27 +87,28 @@ class _DetalleSolicitudScreenState extends State<DetalleSolicitudScreen> {
       motivo: motivo,
     );
     if (!mounted) return;
-    if (context.read<DetalleSolicitudProvider>().errorMessage == null) {
-      try {
-        await NotificacionService().crear(
-          titulo: 'Solicitud de baja pendiente de cancelación',
-          mensaje:
-              'El área ha solicitado cancelar la solicitud ID: ${widget.idSolicitud}. Motivo: $motivo',
-          link: '/bajas/${widget.idSolicitud}',
-        );
-        _avisar('Solicitud enviada a RRHH para revisión.');
-      } catch (_) {
-        _avisar('La solicitud se canceló pero no se pudo notificar a RRHH.');
-      }
+
+    final error = context.read<DetalleSolicitudProvider>().errorMessage;
+    if (error != null) {
+      _avisar(error);
+      return;
+    }
+
+    try {
+      await NotificacionService().crear(
+        titulo: 'Solicitud de baja pendiente de cancelación',
+        mensaje:
+            'El área ha solicitado cancelar la solicitud ID: ${widget.idSolicitud}. Motivo: $motivo',
+        link: '/bajas/${widget.idSolicitud}',
+      );
+      _avisar('Solicitud enviada a RRHH para revisión.');
+    } catch (_) {
+      _avisar('La solicitud se canceló pero no se pudo notificar a RRHH.');
     }
   }
 
   Future<void> _confirmar() async {
     await context.read<DetalleSolicitudProvider>().confirmar(widget.idSolicitud);
-  }
-
-  Future<void> _cancelar() async {
-    await context.read<DetalleSolicitudProvider>().cancelarConMotivo(widget.idSolicitud, motivo: '');
   }
 
   Future<void> _cerrar() async {
@@ -165,7 +166,7 @@ class _DetalleSolicitudScreenState extends State<DetalleSolicitudScreen> {
                 auth: auth,
                 onEliminar: _cancelarConMotivo,
                 onConfirmar: _confirmar,
-                onCancelar: _cancelar,
+                onCancelar: _cancelarConMotivo,
                 onCerrar: _cerrar,
                 onCerrarLegacy: _cerrarLegacy,
                 onCerrarAsync: _cerrarAsync,
@@ -910,7 +911,7 @@ class _Acciones extends StatelessWidget {
             texto: 'Cancelar',
             icono: Icons.cancel_outlined,
             color: AppPalette.error,
-            onPressed: () => _confirmarCancelar(context),
+            onPressed: () => onCancelar(),
           ),
         );
         break;
@@ -966,78 +967,21 @@ class _Acciones extends StatelessWidget {
     return botones;
   }
 
-  Future<void> _ejecutarAccion(BuildContext context, Future<void> Function() accion) async {
-    try {
-      await accion();
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Operación realizada con éxito.'),
-          backgroundColor: AppPalette.success,
+  Future<void> _ejecutarAccion(
+    BuildContext context,
+    Future<void> Function() accion,
+  ) async {
+    await accion();
+    if (!context.mounted) return;
+    final error = provider.errorMessage;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(error ?? 'Operación realizada con éxito.'),
+          backgroundColor: error != null ? AppPalette.error : AppPalette.success,
         ),
       );
-    } catch (_) {
-      // El provider ya maneja el errorMessage; no hacer nada adicional aquí.
-    }
-  }
-
-  Future<void> _confirmarCancelar(BuildContext context) async {
-    final motivoCtrl = TextEditingController();
-    final confirmar = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Cancelar solicitud'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('¿Está seguro de que desea cancelar esta solicitud?'),
-            const SizedBox(height: 16),
-            TextField(
-              controller: motivoCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Motivo de cancelación',
-                hintText: 'Ingrese el motivo',
-              ),
-              maxLines: 3,
-            ),
-          ],
-        ),
-        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-        actions: [
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppPalette.warning,
-                    foregroundColor: const Color(0xFF3D2A00),
-                  ),
-                  child: const Text('Cancelar'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppPalette.error,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: const Text('Confirmar'),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-    if (confirmar != true || !context.mounted) return;
-
-    // Nota: el backend requiere motivo, pero el service actual de cancelar
-    // no recibe motivo. Se envía vacío; el backend validará si es necesario.
-    await onCancelar();
   }
 
   Future<void> _confirmarBajaDefinitiva(BuildContext context) async {

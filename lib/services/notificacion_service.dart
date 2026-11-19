@@ -35,17 +35,23 @@ class NotificacionService {
   }
 
   /// `POST /api/notificaciones/` — crear notificación.
+  ///
+  /// [idUsuario] permite dirigir la notificación a otro usuario. El backend
+  /// actual lo ignora (`id_usuario` es de solo lectura) y además no expone la
+  /// creación de notificaciones; se envía para cuando el backend lo soporte.
   Future<Notificacion> crear({
     required String titulo,
     required String mensaje,
     String? link,
+    String? idUsuario,
   }) async {
     final datos = await _client.post(
       ApiConfig.notificaciones,
       data: {
         'titulo': titulo,
         'mensaje': mensaje,
-        if (link != null) 'link': link,
+        'link': ?link,
+        'id_usuario': ?idUsuario,
       },
     );
     return Notificacion.fromJson(Map<String, dynamic>.from(datos));

@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../../config/theme.dart';
 import '../../models/api_error.dart';
-import '../../models/area_confirmacion.dart';
 import '../../models/filtros_baja.dart';
 import '../../models/opcion_filtro.dart';
 import '../../models/persona.dart';
@@ -97,7 +96,8 @@ class _CrearSolicitudDialogState extends State<CrearSolicitudDialog> {
             titulo: 'Nueva solicitud de baja pendiente',
             mensaje:
                 'Se ha creado una nueva solicitud de baja que requiere confirmación de su área. Solicitante: ${_persona!.nombre}.',
-            link: '/bajas/${idSolicitud}',
+            link: '/bajas/$idSolicitud',
+            idUsuario: directivo.nombreUsuario,
           );
         }
       }

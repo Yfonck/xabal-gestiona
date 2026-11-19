@@ -85,7 +85,7 @@ class BajaService {
       queryParameters: {
         if (fechaDesde != null) 'fecha_desde': _formatoFecha.format(fechaDesde),
         if (fechaHasta != null) 'fecha_hasta': _formatoFecha.format(fechaHasta),
-        if (idEstructura != null) 'id_estructura': idEstructura,
+        'id_estructura': ?idEstructura,
       },
     );
     final mapa = datos is Map
